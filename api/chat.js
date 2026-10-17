@@ -9,6 +9,9 @@ export default async function handler(req, res) {
   if (!key) {
     return res.status(500).json({ error: "环境变量DEEPSEEK_APIKEY没有配置" });
   }
+  if (!userPrompt) {
+    return res.status(400).json({ error: "请输入需求" });
+  }
 
   try {
     const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
@@ -30,7 +33,6 @@ export default async function handler(req, res) {
       })
     });
 
-    // 先拿到原始文本，不直接json解析！
     const rawText = await resp.text();
     console.log("deepseek原始返回：", rawText);
 
