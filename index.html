@@ -3,21 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的AI产品测试站</title>
+    <title>AI提示词生成工具</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
-        body{min-height:100vh;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;padding:20px}
-        .card{background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);border-radius:20px;padding:40px;text-align:center;max-width:500px;width:100%;border:1px solid rgba(255,255,255,0.2)}
-        h1{font-size:32px;margin-bottom:16px}
-        p{font-size:16px;opacity:0.9;line-height:1.7;margin-bottom:24px}
-        .link{display:inline-block;padding:14px 28px;background:#fff;color:#2563eb;text-decoration:none;border-radius:99px;font-weight:bold}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, sans-serif;
+        }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg,#1e40af,#7c3aed);
+            padding:30px 16px;
+        }
+        .container {
+            max-width:700px;
+            margin:0 auto;
+        }
+        .card {
+            background: rgba(255,255,255,0.14);
+            backdrop-filter: blur(14px);
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding:32px;
+            color:#fff;
+        }
+        h1 {
+            text-align:center;
+            margin-bottom:24px;
+            font-size:28px;
+        }
+        label {
+            display:block;
+            margin:16px 0 8px;
+            font-weight:500;
+        }
+        textarea {
+            width:100%;
+            min-height:100px;
+            padding:14px;
+            border-radius:12px;
+            border:none;
+            outline:none;
+            font-size:15px;
+            resize:vertical;
+        }
+        button {
+            width:100%;
+            margin-top:20px;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            background:#ffffff;
+            color:#1e40af;
+            font-weight:bold;
+            font-size:16px;
+            cursor:pointer;
+        }
+        button:disabled {
+            opacity:0.6;
+            cursor:not-allowed;
+        }
+        .result-box {
+            margin-top:24px;
+            background:rgba(0,0,0,0.25);
+            border-radius:12px;
+            padding:18px;
+            min-height:120px;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>✅ 站点部署成功</h1>
-        <p>这是我的第一个全球可访问测试网站<br>基于 GitHub + Vercel 搭建<br>后续用来落地AI小工具、独立产品</p>
-        <a class="link" href="#">准备挖掘需求，做AI产品</a>
+    <div class="container">
+        <div class="card">
+            <h1>AI 提示词生成器</h1>
+            <label>你想要做什么？简单描述需求：</label>
+            <textarea id="userInput" placeholder="例如：帮我写一个适合短视频带货的文案，产品是蓝牙耳机"></textarea>
+            <button id="submitBtn">生成专业提示词</button>
+            <div class="result-box" id="result">生成结果会展示在这里...</div>
+        </div>
     </div>
+
+    <script>
+        const submitBtn = document.getElementById('submitBtn');
+        const userInput = document.getElementById('userInput');
+        const result = document.getElementById('result');
+
+        // ============ 这里需要替换成你自己的API信息 ============
+        const API_KEY = "在这里填入你的API Key";
+        const API_URL = "https://api.deepseek.com/v1/chat/completions";
+        // ======================================================
+
+        submitBtn.onclick = async () => {
+            const content = userInput.value.trim();
+            if(!content) {
+                result.innerText = "请输入你的需求！";
+                return;
+            }
+            submitBtn.disabled = true;
+            result.innerText = "正在生成...";
+            try{
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            {role:"system", content:"你是提示词专家，根据用户需求，生成一段专业、详细、高质量的AI提示词，直接输出提示词，不要多余解释"},
+                            {role:"user", content: content}
+                        ],
+                        temperature:0.7
+                    })
+                })
+                const data = await res.json();
+                if(data.choices && data.choices[0]){
+                    result.innerText = data.choices[0].message.content;
+                }else{
+                    result.innerText = "请求失败："+JSON.stringify(data);
+                }
+            }catch(err){
+                result.innerText = "网络错误："+err.message;
+            }
+            submitBtn.disabled = false;
+        }
+    </script>
 </body>
 </html>
