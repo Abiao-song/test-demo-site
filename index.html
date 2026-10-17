@@ -35,41 +35,34 @@
         }
         label {
             display:block;
-            margin:16px 0 8px;
-            font-weight:500;
+            margin-bottom:8px;
+            font-size:16px;
         }
         textarea {
             width:100%;
-            min-height:100px;
             padding:14px;
             border-radius:12px;
             border:none;
-            outline:none;
-            font-size:15px;
-            resize:vertical;
+            font-size:16px;
+            min-height:120px;
+            margin-bottom:20px;
         }
         button {
             width:100%;
-            margin-top:20px;
             padding:14px;
-            border:none;
             border-radius:12px;
-            background:#ffffff;
+            border:none;
+            font-size:17px;
             color:#1e40af;
             font-weight:bold;
-            font-size:16px;
             cursor:pointer;
         }
-        button:disabled {
-            opacity:0.6;
-            cursor:not-allowed;
-        }
-        .result-box {
-            margin-top:24px;
-            background:rgba(0,0,0,0.25);
+        #result {
+            margin-top:20px;
+            min-height:80px;
+            padding:16px;
+            background:rgba(0,0,0,0.2);
             border-radius:12px;
-            padding:18px;
-            min-height:120px;
             white-space: pre-wrap;
         }
     </style>
@@ -79,43 +72,42 @@
         <div class="card">
             <h1>AI 提示词生成器</h1>
             <label>你想要做什么？简单描述需求：</label>
-            <textarea id="userInput" placeholder="例如：帮我写一个适合短视频带货的文案，产品是蓝牙耳机"></textarea>
+            <textarea id="inputBox" placeholder="例如：亚马逊标题"></textarea>
             <button id="submitBtn">生成专业提示词</button>
-            <div class="result-box" id="result">生成结果会展示在这里...</div>
+            <div id="result"></div>
         </div>
     </div>
 
     <script>
+        const inputBox = document.getElementById('inputBox');
         const submitBtn = document.getElementById('submitBtn');
-        const userInput = document.getElementById('userInput');
-        const result = document.getElementById('result');
+        const resultDom = document.getElementById('result');
 
-        submitBtn.onclick = async () => {
-            const content = userInput.value.trim();
-            if(!content) {
-                result.innerText = "请输入你的需求！";
+        submitBtn.onclick = async function(){
+            const userPrompt = inputBox.value.trim();
+            if(!userPrompt){
+                resultDom.innerText = "请输入需求";
                 return;
             }
-            submitBtn.disabled = true;
-            result.innerText = "正在生成...";
-            try{
+            resultDom.innerText = "正在请求...";
+            try {
+                // ✅ 重点：接口地址 /api/chat 和你的文件名 chat.js 对应！
                 const res = await fetch("/api/chat", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ userPrompt: content })
-                })
-                const data = await res.json();
-                if(data.success){
-                    result.innerText = data.content;
+                    body: JSON.stringify({ userPrompt })
+                });
+                const json = await res.json();
+                if(json.error){
+                    resultDom.innerText = "出错：" + json.error;
                 }else{
-                    result.innerText = "出错："+data.msg;
+                    resultDom.innerText = json.result;
                 }
-            }catch(err){
-                result.innerText = "网络/跨域错误："+err.message;
+            } catch (e) {
+                resultDom.innerText = "网络异常：" + String(e);
             }
-            submitBtn.disabled = false;
         }
     </script>
 </body>
