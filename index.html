@@ -90,11 +90,6 @@
         const userInput = document.getElementById('userInput');
         const result = document.getElementById('result');
 
-        // ============ 这里需要替换成你自己的API信息 ============
-        const API_KEY = "sk-e052640084e743839ca1dc253d45d201";
-        const API_URL = "https://api.deepseek.com/v1/chat/completions";
-        // ======================================================
-
         submitBtn.onclick = async () => {
             const content = userInput.value.trim();
             if(!content) {
@@ -104,29 +99,21 @@
             submitBtn.disabled = true;
             result.innerText = "正在生成...";
             try{
-                const res = await fetch(API_URL, {
+                const res = await fetch("/api/chat", {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${API_KEY}`
+                        "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [
-                            {role:"system", content:"你是提示词专家，根据用户需求，生成一段专业、详细、高质量的AI提示词，直接输出提示词，不要多余解释"},
-                            {role:"user", content: content}
-                        ],
-                        temperature:0.7
-                    })
+                    body: JSON.stringify({ userPrompt: content })
                 })
                 const data = await res.json();
-                if(data.choices && data.choices[0]){
-                    result.innerText = data.choices[0].message.content;
+                if(data.success){
+                    result.innerText = data.content;
                 }else{
-                    result.innerText = "请求失败："+JSON.stringify(data);
+                    result.innerText = "出错："+data.msg;
                 }
             }catch(err){
-                result.innerText = "网络错误："+err.message;
+                result.innerText = "网络/跨域错误："+err.message;
             }
             submitBtn.disabled = false;
         }
