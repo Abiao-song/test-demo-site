@@ -1,31 +1,61 @@
-export default async function handler(req) {
-    if(req.method !== "POST"){
-        return Response.json({success:false,msg:"只支持POST请求"},{status:405})
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: "只允许POST请求" });
+  }
+
+  const { userPrompt } = req.body;
+  const key = process.env.DEEPSEEK_APIKEY;
+
+  if (!key) {
+    return res.status(500).json({ error: "环境变量DEEPSEEK_APIKEY没有配置" });
+  }
+
+  try {
+    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "system",
+            content: "你是提示词专家，根据用户需求，输出专业、可直接复制使用的提示词，简洁高效。"
+          },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7
+      })
+    });
+
+    // 先拿到原始文本，不直接json解析！
+    const rawText = await resp.text();
+    console.log("deepseek原始返回：", rawText);
+
+    if (!resp.ok) {
+      return res.status(resp.status).json({
+        error: "DeepSeek接口报错",
+        raw: rawText
+      });
     }
-    const { userPrompt } = await req.json()
-    const apiKey = process.env.DEEPSEEK_APIKEY;
-    if(!apiKey){
-        return Response.json({success:false,msg:"Vercel后台没有配置APIKEY环境变量"},{status:500})
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      return res.status(500).json({
+        error: "上游返回不是JSON",
+        raw: rawText
+      });
     }
-    const resp = await fetch("https://api.deepseek.com/v1/chat/completions",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json",
-            "Authorization":`Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model:"deepseek-chat",
-            messages:[
-                {role:"system",content:"你是提示词专家，根据用户需求，生成一段专业、详细、高质量的AI提示词，直接输出提示词，不要多余解释"},
-                {role:"user",content:userPrompt}
-            ],
-            temperature:0.7
-        })
-    })
-    const json = await resp.json();
-    if(json.choices?.[0]){
-        return Response.json({success:true, content: json.choices[0].message.content})
-    }else{
-        return Response.json({success:false, msg: JSON.stringify(json)})
-    }
+
+    const answer = data.choices?.[0]?.message?.content || "无返回结果";
+    return res.status(200).json({ result: answer });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "服务异常", msg: String(err) });
+  }
 }
