@@ -3,204 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI提示词生成工具</title>
+    <title>AI提示词生成器</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: system-ui, sans-serif;
-        }
-        body {
-            min-height: 100vh;
-            background: linear-gradient(135deg,#1e40af,#7c3aed);
-            padding:30px 16px;
-        }
-        .container {
-            max-width:700px;
-            margin:0 auto;
-        }
-        .card {
-            background: rgba(255,255,255,0.14);
-            backdrop-filter: blur(14px);
-            border-radius: 22px;
-            border: 1px solid rgba(255,255,255,0.2);
-            padding:32px;
-            color:#fff;
-        }
-        h1 {
-            text-align:center;
-            margin-bottom:24px;
-            font-size:28px;
-        }
-        label {
-            display:block;
-            margin-bottom:8px;
-            font-size:16px;
-        }
-        textarea {
-            width:100%;
-            padding:14px;
-            border-radius:12px;
-            border:none;
-            font-size:16px;
-            min-height:120px;
-            margin-bottom:20px;
-        }
-        #submitBtn {
-            width:100%;
-            padding:14px;
-            border-radius:12px;
-            border:none;
-            font-size:17px;
-            color:#1e40af;
-            font-weight:bold;
-            cursor:pointer;
-            background:#fff;
-        }
-        .result-wrap {
-            margin-top:20px;
-            position:relative;
-        }
-        .result-header {
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            margin-bottom:8px;
-        }
-        .result-title {
-            font-size:16px;
-        }
-        #copyBtn {
-            width:auto;
-            padding:6px 14px;
-            border-radius:10px;
-            border:1px solid rgba(255,255,255,0.35);
-            font-size:14px;
-            color:#fff;
-            font-weight:600;
-            cursor:pointer;
-            background:rgba(255,255,255,0.16);
-        }
-        #copyBtn:hover {
-            background:rgba(255,255,255,0.26);
-        }
-        #copyBtn:disabled {
-            opacity:0.5;
-            cursor:not-allowed;
-        }
-        #result {
-            min-height:80px;
-            padding:16px;
-            background:rgba(0,0,0,0.2);
-            border-radius:12px;
-            white-space: pre-wrap;
-        }
-        .copy-toast {
-            position:absolute;
-            left:50%;
-            bottom:16px;
-            transform:translateX(-50%) translateY(8px);
-            padding:8px 16px;
-            border-radius:999px;
-            background:rgba(15,23,42,0.88);
-            color:#fff;
-            font-size:13px;
-            opacity:0;
-            pointer-events:none;
-            transition:opacity .2s ease, transform .2s ease;
-            white-space:nowrap;
-        }
-        .copy-toast.show {
-            opacity:1;
-            transform:translateX(-50%) translateY(0);
-        }
+        *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
+        body{background:#111827;color:#f3f4f6;padding:24px}
+        .container{max-width:720px;margin:0 auto}
+        .card{background:#1f2937;padding:24px;border-radius:16px}
+        h1{margin-bottom:16px;font-size:22px;text-align:center}
+        label{display:block;margin-bottom:8px}
+        textarea{width:100%;padding:12px;border-radius:8px;border:none;font-size:16px;min-height:100px}
+        button{margin-top:12px;padding:12px 20px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:16px;cursor:pointer}
+        button:disabled{background:#475569;cursor:not-allowed}
+        .result-box{margin-top:24px;background:rgba(255,255,255,0.08);border-radius:12px;padding:18px;min-height:120px;white-space:pre-wrap;}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <h1>AI 提示词生成器</h1>
+            <h1>AI提示词生成器</h1>
             <label>你想要做什么？简单描述需求：</label>
-            <textarea id="inputBox" placeholder="例如：亚马逊标题"></textarea>
+            <textarea id="userInput" placeholder="例如：帮我写一个适合短视频带货的文案，产品是蓝牙耳机"></textarea>
             <button id="submitBtn">生成专业提示词</button>
-            <div class="result-wrap">
-                <div class="result-header">
-                    <span class="result-title">AI 生成结果</span>
-                    <button type="button" id="copyBtn" disabled>一键复制</button>
-                </div>
-                <div id="result"></div>
-                <div id="copyToast" class="copy-toast">复制成功</div>
-            </div>
+            <div class="result-box" id="result">生成结果会展示在这里...</div>
         </div>
     </div>
 
     <script>
-        const inputBox = document.getElementById('inputBox');
         const submitBtn = document.getElementById('submitBtn');
-        const resultDom = document.getElementById('result');
-        const copyBtn = document.getElementById('copyBtn');
-        const copyToast = document.getElementById('copyToast');
-        let toastTimer = null;
+        const userInput = document.getElementById('userInput');
+        const result = document.getElementById('result');
 
-        function setCopyEnabled(enabled) {
-            copyBtn.disabled = !enabled;
-        }
-
-        function showCopyToast() {
-            copyToast.classList.add('show');
-            if (toastTimer) clearTimeout(toastTimer);
-            toastTimer = setTimeout(function () {
-                copyToast.classList.remove('show');
-            }, 2000);
-        }
-
-        copyBtn.onclick = async function () {
-            const text = resultDom.innerText;
-            if (!text) return;
-            try {
-                await navigator.clipboard.writeText(text);
-                showCopyToast();
-            } catch (e) {
-                const temp = document.createElement('textarea');
-                temp.value = text;
-                document.body.appendChild(temp);
-                temp.select();
-                document.execCommand('copy');
-                document.body.removeChild(temp);
-                showCopyToast();
-            }
-        };
-
-        submitBtn.onclick = async function(){
-            const userPrompt = inputBox.value.trim();
-            if(!userPrompt){
-                resultDom.innerText = "请输入需求";
-                setCopyEnabled(false);
+        submitBtn.onclick = async () => {
+            const content = userInput.value.trim();
+            if(!content){
+                result.innerText = "请输入你的需求！";
                 return;
             }
-            resultDom.innerText = "正在请求...";
-            setCopyEnabled(false);
-            try {
+            submitBtn.disabled = true;
+            result.innerText = "正在生成...";
+            try{
+                // 只请求本地代理接口，前端没有任何sk密钥
                 const res = await fetch("/api/chat", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ userPrompt })
+                    body: JSON.stringify({
+                        messages: [
+                            {role:"system", content:"你是提示词专家，根据用户需求，生成一段专业、详细、高质量的AI提示词，直接输出提示词，不要多余解释"},
+                            {role:"user", content: content}
+                        ]
+                    })
                 });
                 const json = await res.json();
                 if(json.error){
-                    resultDom.innerText = "出错：" + json.error;
-                    setCopyEnabled(false);
+                    result.innerText = "出错：" + json.error;
                 }else{
-                    resultDom.innerText = json.result;
-                    setCopyEnabled(!!json.result);
+                    result.innerText = json.choices[0].message.content;
                 }
-            } catch (e) {
-                resultDom.innerText = "网络异常，请稍后重试";
-                setCopyEnabled(false);
+            }catch(err){
+                result.innerText = "请求异常：" + err.message;
             }
+            submitBtn.disabled = false;
         }
     </script>
 </body>
