@@ -47,7 +47,7 @@
             min-height:120px;
             margin-bottom:20px;
         }
-        button {
+        #submitBtn {
             width:100%;
             padding:14px;
             border-radius:12px;
@@ -56,14 +56,64 @@
             color:#1e40af;
             font-weight:bold;
             cursor:pointer;
+            background:#fff;
+        }
+        .result-wrap {
+            margin-top:20px;
+            position:relative;
+        }
+        .result-header {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom:8px;
+        }
+        .result-title {
+            font-size:16px;
+        }
+        #copyBtn {
+            width:auto;
+            padding:6px 14px;
+            border-radius:10px;
+            border:1px solid rgba(255,255,255,0.35);
+            font-size:14px;
+            color:#fff;
+            font-weight:600;
+            cursor:pointer;
+            background:rgba(255,255,255,0.16);
+        }
+        #copyBtn:hover {
+            background:rgba(255,255,255,0.26);
+        }
+        #copyBtn:disabled {
+            opacity:0.5;
+            cursor:not-allowed;
         }
         #result {
-            margin-top:20px;
             min-height:80px;
             padding:16px;
             background:rgba(0,0,0,0.2);
             border-radius:12px;
             white-space: pre-wrap;
+        }
+        .copy-toast {
+            position:absolute;
+            left:50%;
+            bottom:16px;
+            transform:translateX(-50%) translateY(8px);
+            padding:8px 16px;
+            border-radius:999px;
+            background:rgba(15,23,42,0.88);
+            color:#fff;
+            font-size:13px;
+            opacity:0;
+            pointer-events:none;
+            transition:opacity .2s ease, transform .2s ease;
+            white-space:nowrap;
+        }
+        .copy-toast.show {
+            opacity:1;
+            transform:translateX(-50%) translateY(0);
         }
     </style>
 </head>
@@ -74,7 +124,14 @@
             <label>你想要做什么？简单描述需求：</label>
             <textarea id="inputBox" placeholder="例如：亚马逊标题"></textarea>
             <button id="submitBtn">生成专业提示词</button>
-            <div id="result"></div>
+            <div class="result-wrap">
+                <div class="result-header">
+                    <span class="result-title">AI 生成结果</span>
+                    <button type="button" id="copyBtn" disabled>一键复制</button>
+                </div>
+                <div id="result"></div>
+                <div id="copyToast" class="copy-toast">复制成功</div>
+            </div>
         </div>
     </div>
 
@@ -82,14 +139,48 @@
         const inputBox = document.getElementById('inputBox');
         const submitBtn = document.getElementById('submitBtn');
         const resultDom = document.getElementById('result');
+        const copyBtn = document.getElementById('copyBtn');
+        const copyToast = document.getElementById('copyToast');
+        let toastTimer = null;
+
+        function setCopyEnabled(enabled) {
+            copyBtn.disabled = !enabled;
+        }
+
+        function showCopyToast() {
+            copyToast.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () {
+                copyToast.classList.remove('show');
+            }, 2000);
+        }
+
+        copyBtn.onclick = async function () {
+            const text = resultDom.innerText;
+            if (!text) return;
+            try {
+                await navigator.clipboard.writeText(text);
+                showCopyToast();
+            } catch (e) {
+                const temp = document.createElement('textarea');
+                temp.value = text;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+                showCopyToast();
+            }
+        };
 
         submitBtn.onclick = async function(){
             const userPrompt = inputBox.value.trim();
             if(!userPrompt){
                 resultDom.innerText = "请输入需求";
+                setCopyEnabled(false);
                 return;
             }
             resultDom.innerText = "正在请求...";
+            setCopyEnabled(false);
             try {
                 // ✅ 重点：接口地址 /api/chat 和你的文件名 chat.js 对应！
                 const res = await fetch("/api/chat", {
@@ -102,11 +193,14 @@
                 const json = await res.json();
                 if(json.error){
                     resultDom.innerText = "出错：" + json.error;
+                    setCopyEnabled(false);
                 }else{
                     resultDom.innerText = json.result;
+                    setCopyEnabled(!!json.result);
                 }
             } catch (e) {
                 resultDom.innerText = "网络异常：" + String(e);
+                setCopyEnabled(false);
             }
         }
     </script>
