@@ -12,6 +12,9 @@
         h1{margin-bottom:28px;font-size:22px;text-align:center}
         .field{margin-bottom:22px}
         label{display:block;margin-bottom:10px;color:#d1d5db}
+        .field-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+        .field-head label{margin-bottom:0}
+        .template-hint{font-size:12px;color:#9ca3af;line-height:1.4}
         select,textarea{
             width:100%;
             padding:12px 14px;
@@ -64,6 +67,7 @@
             transition:opacity .2s ease;
         }
         .copy-toast.show{opacity:1}
+        .char-count{margin-top:10px;font-size:13px;color:#9ca3af}
     </style>
 </head>
 <body>
@@ -71,7 +75,10 @@
         <div class="card">
             <h1>AI提示词生成器</h1>
             <div class="field">
-                <label for="templateSelect">选择生成模板：</label>
+                <div class="field-head">
+                    <label for="templateSelect">选择生成模板：</label>
+                    <span id="templateHint" class="template-hint">生成标题+五点描述</span>
+                </div>
                 <select id="templateSelect">
                     <option value="amazon">亚马逊Listing标题+五点</option>
                     <option value="xiaohongshu">小红书种草文案</option>
@@ -88,10 +95,11 @@
                 <button id="clearBtn" type="button">清空</button>
                 <button id="copyBtn" type="button" style="display:none;">一键复制结果</button>
             </div>
-            <div class="result-wrap">
+            <div class="result-wrap" id="resultWrap">
                 <div class="result-box" id="result">生成结果会展示在这里...</div>
                 <div id="copyToast" class="copy-toast">已复制</div>
             </div>
+            <div id="charCount" class="char-count">输出字数：0</div>
         </div>
     </div>
     <script>
@@ -102,32 +110,44 @@
         const result = document.getElementById('result');
         const templateSelect = document.getElementById('templateSelect');
         const copyToast = document.getElementById('copyToast');
+        const templateHint = document.getElementById('templateHint');
+        const resultWrap = document.getElementById('resultWrap');
+        const charCount = document.getElementById('charCount');
         let lastResultText = "";
         let toastTimer = null;
         const RESULT_PLACEHOLDER = "生成结果会展示在这里...";
 
         const templates = {
             amazon: {
-                placeholder: "例如：降噪蓝牙耳机，续航30小时，适合通勤和办公",
+                hint: "生成标题+五点描述",
+                sample: "降噪蓝牙耳机，续航30小时，适合通勤和办公",
                 system: "你是提示词专家。根据用户需求，生成亚马逊Listing标题+五条Bullet Points的专业、详细、高质量AI提示词。直接输出提示词，不要多余解释。"
             },
             xiaohongshu: {
-                placeholder: "例如：夏日防晒霜，清爽不油腻，学生党平价",
+                hint: "种草文案",
+                sample: "夏日防晒霜，清爽不油腻，学生党平价",
                 system: "你是提示词专家。根据用户需求，生成小红书种草文案的专业、详细、高质量AI提示词（含标题、正文、话题标签）。直接输出提示词，不要多余解释。"
             },
             mainImage: {
-                placeholder: "例如：白色无线耳机，金属质感，深色渐变背景",
+                hint: "AI绘图提示词",
+                sample: "白色无线耳机，金属质感，深色渐变背景",
                 system: "你是提示词专家。根据用户需求，生成产品主图AI绘图提示词，需包含主体、材质、光影、构图、背景和画质关键词。直接输出提示词，不要多余解释。"
             },
             title: {
-                placeholder: "例如：真空保温杯，316不锈钢，500ml，送礼",
+                hint: "商品短标题",
+                sample: "真空保温杯，316不锈钢，500ml，送礼",
                 system: "你是提示词专家。根据用户需求，生成多条电商产品标题的专业、详细、高质量AI提示词。直接输出提示词，不要多余解释。"
             }
         };
 
-        function applyTemplatePlaceholder() {
+        function updateCharCount() {
+            charCount.textContent = "输出字数：" + (lastResultText ? lastResultText.length : 0);
+        }
+
+        function applyTemplate() {
             const tpl = templates[templateSelect.value] || templates.amazon;
-            userInput.placeholder = tpl.placeholder;
+            templateHint.textContent = tpl.hint;
+            userInput.value = tpl.sample;
         }
 
         function showCopyToast() {
@@ -136,8 +156,8 @@
             toastTimer = setTimeout(() => copyToast.classList.remove("show"), 1600);
         }
 
-        applyTemplatePlaceholder();
-        templateSelect.onchange = applyTemplatePlaceholder;
+        applyTemplate();
+        templateSelect.onchange = applyTemplate;
 
         clearBtn.onclick = () => {
             userInput.value = "";
@@ -145,18 +165,23 @@
             result.innerText = RESULT_PLACEHOLDER;
             copyBtn.style.display = "none";
             copyToast.classList.remove("show");
+            updateCharCount();
         };
 
         submitBtn.onclick = async () => {
             const content = userInput.value.trim();
             if(!content){
                 result.innerText = "请输入你的需求！";
+                lastResultText = "";
                 copyBtn.style.display = "none";
+                updateCharCount();
                 return;
             }
             submitBtn.disabled = true;
             result.innerText = "正在生成，请稍候…";
+            lastResultText = "";
             copyBtn.style.display = "none";
+            updateCharCount();
             const tpl = templates[templateSelect.value] || templates.amazon;
             try{
                 const res = await fetch("/api/chat", {
@@ -174,6 +199,7 @@
                 const json = await res.json();
                 if(json.error){
                     result.innerText = "出错：" + json.error;
+                    lastResultText = "";
                     copyBtn.style.display = "none";
                 }else{
                     lastResultText = json.choices[0].message.content;
@@ -182,8 +208,11 @@
                 }
             }catch(err){
                 result.innerText = "请求异常：" + err.message;
+                lastResultText = "";
                 copyBtn.style.display = "none";
             }
+            updateCharCount();
+            resultWrap.scrollIntoView({ behavior: "smooth", block: "start" });
             submitBtn.disabled = false;
         }
 
