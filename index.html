@@ -182,7 +182,6 @@
             resultDom.innerText = "正在请求...";
             setCopyEnabled(false);
             try {
-                // ✅ 重点：接口地址 /api/chat 和你的文件名 chat.js 对应！
                 const res = await fetch("/api/chat", {
                     method: "POST",
                     headers: {
@@ -199,7 +198,7 @@
                     setCopyEnabled(!!json.result);
                 }
             } catch (e) {
-                resultDom.innerText = "网络异常：" + String(e);
+                resultDom.innerText = "网络异常，请稍后重试";
                 setCopyEnabled(false);
             }
         }
