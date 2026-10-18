@@ -11,6 +11,17 @@
         .card{background:#1f2937;padding:24px;border-radius:16px}
         h1{margin-bottom:16px;font-size:22px;text-align:center}
         label{display:block;margin-bottom:8px}
+        select{
+            width:100%;
+            padding:12px;
+            border-radius:8px;
+            border:1px solid #374151;
+            background:#111827;
+            color:#f3f4f6;
+            font-size:16px;
+            margin-bottom:16px;
+            outline:none;
+        }
         textarea{width:100%;padding:12px;border-radius:8px;border:none;font-size:16px;min-height:100px}
         button{margin-top:12px;padding:12px 20px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:16px;cursor:pointer}
         button:disabled{background:#475569;cursor:not-allowed}
@@ -23,7 +34,14 @@
     <div class="container">
         <div class="card">
             <h1>AI提示词生成器</h1>
-            <label>你想要做什么？简单描述需求：</label>
+            <label for="templateSelect">选择生成模板：</label>
+            <select id="templateSelect">
+                <option value="amazon">亚马逊Listing标题+五点</option>
+                <option value="xiaohongshu">小红书种草文案</option>
+                <option value="mainImage">产品主图AI绘图提示词</option>
+                <option value="title">电商产品标题</option>
+            </select>
+            <label for="userInput">你想要做什么？简单描述需求：</label>
             <textarea id="userInput" placeholder="例如：帮我写一个适合短视频带货的文案，产品是蓝牙耳机"></textarea>
             <div class="btn-row">
                 <button id="submitBtn">生成专业提示词</button>
@@ -37,7 +55,35 @@
         const copyBtn = document.getElementById('copyBtn');
         const userInput = document.getElementById('userInput');
         const result = document.getElementById('result');
+        const templateSelect = document.getElementById('templateSelect');
         let lastResultText = "";
+
+        const templates = {
+            amazon: {
+                placeholder: "例如：降噪蓝牙耳机，续航30小时，适合通勤和办公",
+                system: "你是提示词专家。根据用户需求，生成亚马逊Listing标题+五条Bullet Points的专业、详细、高质量AI提示词。直接输出提示词，不要多余解释。"
+            },
+            xiaohongshu: {
+                placeholder: "例如：夏日防晒霜，清爽不油腻，学生党平价",
+                system: "你是提示词专家。根据用户需求，生成小红书种草文案的专业、详细、高质量AI提示词（含标题、正文、话题标签）。直接输出提示词，不要多余解释。"
+            },
+            mainImage: {
+                placeholder: "例如：白色无线耳机，金属质感，深色渐变背景",
+                system: "你是提示词专家。根据用户需求，生成产品主图AI绘图提示词，需包含主体、材质、光影、构图、背景和画质关键词。直接输出提示词，不要多余解释。"
+            },
+            title: {
+                placeholder: "例如：真空保温杯，316不锈钢，500ml，送礼",
+                system: "你是提示词专家。根据用户需求，生成多条电商产品标题的专业、详细、高质量AI提示词。直接输出提示词，不要多余解释。"
+            }
+        };
+
+        function applyTemplatePlaceholder() {
+            const tpl = templates[templateSelect.value] || templates.amazon;
+            userInput.placeholder = tpl.placeholder;
+        }
+
+        applyTemplatePlaceholder();
+        templateSelect.onchange = applyTemplatePlaceholder;
 
         submitBtn.onclick = async () => {
             const content = userInput.value.trim();
@@ -49,6 +95,7 @@
             submitBtn.disabled = true;
             result.innerText = "正在生成...";
             copyBtn.style.display = "none";
+            const tpl = templates[templateSelect.value] || templates.amazon;
             try{
                 const res = await fetch("/api/chat", {
                     method: "POST",
@@ -57,7 +104,7 @@
                     },
                     body: JSON.stringify({
                         messages: [
-                            {role:"system", content:"你是提示词专家，根据用户需求，生成一段专业、详细、高质量的AI提示词，直接输出提示词，不要多余解释"},
+                            {role:"system", content: tpl.system},
                             {role:"user", content: content}
                         ]
                     })
