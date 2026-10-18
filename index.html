@@ -14,7 +14,9 @@
         textarea{width:100%;padding:12px;border-radius:8px;border:none;font-size:16px;min-height:100px}
         button{margin-top:12px;padding:12px 20px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:16px;cursor:pointer}
         button:disabled{background:#475569;cursor:not-allowed}
-        .result-box{margin-top:24px;background:rgba(255,255,255,0.08);border-radius:12px;padding:18px;min-height:120px;white-space:pre-wrap;}
+        .result-box{margin-top:12px;background:rgba(255,255,255,0.08);border-radius:12px;padding:18px;min-height:120px;white-space:pre-wrap;}
+        .copy-btn{background:#10b981;margin-left:10px;}
+        .btn-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
     </style>
 </head>
 <body>
@@ -23,26 +25,31 @@
             <h1>AI提示词生成器</h1>
             <label>你想要做什么？简单描述需求：</label>
             <textarea id="userInput" placeholder="例如：帮我写一个适合短视频带货的文案，产品是蓝牙耳机"></textarea>
-            <button id="submitBtn">生成专业提示词</button>
+            <div class="btn-row">
+                <button id="submitBtn">生成专业提示词</button>
+                <button id="copyBtn" class="copy-btn" style="display:none;">一键复制结果</button>
+            </div>
             <div class="result-box" id="result">生成结果会展示在这里...</div>
         </div>
     </div>
-
     <script>
         const submitBtn = document.getElementById('submitBtn');
+        const copyBtn = document.getElementById('copyBtn');
         const userInput = document.getElementById('userInput');
         const result = document.getElementById('result');
+        let lastResultText = "";
 
         submitBtn.onclick = async () => {
             const content = userInput.value.trim();
             if(!content){
                 result.innerText = "请输入你的需求！";
+                copyBtn.style.display = "none";
                 return;
             }
             submitBtn.disabled = true;
             result.innerText = "正在生成...";
+            copyBtn.style.display = "none";
             try{
-                // 只请求本地代理接口，前端没有任何sk密钥
                 const res = await fetch("/api/chat", {
                     method: "POST",
                     headers: {
@@ -58,13 +65,28 @@
                 const json = await res.json();
                 if(json.error){
                     result.innerText = "出错：" + json.error;
+                    copyBtn.style.display = "none";
                 }else{
-                    result.innerText = json.choices[0].message.content;
+                    lastResultText = json.choices[0].message.content;
+                    result.innerText = lastResultText;
+                    copyBtn.style.display = "inline-block";
                 }
             }catch(err){
                 result.innerText = "请求异常：" + err.message;
+                copyBtn.style.display = "none";
             }
             submitBtn.disabled = false;
+        }
+
+        copyBtn.onclick = async () => {
+            try{
+                await navigator.clipboard.writeText(lastResultText);
+                copyBtn.innerText = "✅ 已复制";
+                setTimeout(()=> copyBtn.innerText = "一键复制结果",1500)
+            }catch(e){
+                copyBtn.innerText = "复制失败";
+                setTimeout(()=> copyBtn.innerText = "一键复制结果",1500)
+            }
         }
     </script>
 </body>
