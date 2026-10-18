@@ -6,57 +6,105 @@
     <title>AI提示词生成器</title>
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
-        body{background:#111827;color:#f3f4f6;padding:24px}
+        body{background:#111827;color:#f3f4f6;padding:32px 20px}
         .container{max-width:720px;margin:0 auto}
-        .card{background:#1f2937;padding:24px;border-radius:16px}
-        h1{margin-bottom:16px;font-size:22px;text-align:center}
-        label{display:block;margin-bottom:8px}
-        select{
+        .card{background:#1f2937;padding:32px;border-radius:16px;border:1px solid #374151}
+        h1{margin-bottom:28px;font-size:22px;text-align:center}
+        .field{margin-bottom:22px}
+        label{display:block;margin-bottom:10px;color:#d1d5db}
+        select,textarea{
             width:100%;
-            padding:12px;
+            padding:12px 14px;
             border-radius:8px;
             border:1px solid #374151;
             background:#111827;
             color:#f3f4f6;
             font-size:16px;
-            margin-bottom:16px;
             outline:none;
         }
-        textarea{width:100%;padding:12px;border-radius:8px;border:none;font-size:16px;min-height:100px}
-        button{margin-top:12px;padding:12px 20px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:16px;cursor:pointer}
+        textarea{min-height:120px;resize:vertical}
+        .btn-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 24px}
+        button{
+            padding:12px 20px;
+            border:none;
+            border-radius:8px;
+            color:#fff;
+            font-size:16px;
+            cursor:pointer;
+        }
+        #submitBtn{background:#2563eb}
+        #submitBtn:hover{background:#1d4ed8}
+        #clearBtn{background:#4b5563}
+        #clearBtn:hover{background:#6b7280}
+        #copyBtn{background:#059669}
+        #copyBtn:hover{background:#047857}
         button:disabled{background:#475569;cursor:not-allowed}
-        .result-box{margin-top:12px;background:rgba(255,255,255,0.08);border-radius:12px;padding:18px;min-height:120px;white-space:pre-wrap;}
-        .copy-btn{background:#10b981;margin-left:10px;}
-        .btn-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+        .result-wrap{position:relative}
+        .result-box{
+            background:rgba(255,255,255,0.08);
+            border-radius:12px;
+            padding:20px;
+            min-height:140px;
+            white-space:pre-wrap;
+            line-height:1.6;
+            color:#e5e7eb;
+        }
+        .copy-toast{
+            position:absolute;
+            left:50%;
+            bottom:18px;
+            transform:translateX(-50%);
+            padding:8px 16px;
+            border-radius:999px;
+            background:#064e3b;
+            color:#d1fae5;
+            font-size:14px;
+            opacity:0;
+            pointer-events:none;
+            transition:opacity .2s ease;
+        }
+        .copy-toast.show{opacity:1}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <h1>AI提示词生成器</h1>
-            <label for="templateSelect">选择生成模板：</label>
-            <select id="templateSelect">
-                <option value="amazon">亚马逊Listing标题+五点</option>
-                <option value="xiaohongshu">小红书种草文案</option>
-                <option value="mainImage">产品主图AI绘图提示词</option>
-                <option value="title">电商产品标题</option>
-            </select>
-            <label for="userInput">你想要做什么？简单描述需求：</label>
-            <textarea id="userInput" placeholder="例如：帮我写一个适合短视频带货的文案，产品是蓝牙耳机"></textarea>
-            <div class="btn-row">
-                <button id="submitBtn">生成专业提示词</button>
-                <button id="copyBtn" class="copy-btn" style="display:none;">一键复制结果</button>
+            <div class="field">
+                <label for="templateSelect">选择生成模板：</label>
+                <select id="templateSelect">
+                    <option value="amazon">亚马逊Listing标题+五点</option>
+                    <option value="xiaohongshu">小红书种草文案</option>
+                    <option value="mainImage">产品主图AI绘图提示词</option>
+                    <option value="title">电商产品标题</option>
+                </select>
             </div>
-            <div class="result-box" id="result">生成结果会展示在这里...</div>
+            <div class="field">
+                <label for="userInput">你想要做什么？简单描述需求：</label>
+                <textarea id="userInput" placeholder="例如：帮我写一个适合短视频带货的文案，产品是蓝牙耳机"></textarea>
+            </div>
+            <div class="btn-row">
+                <button id="submitBtn" type="button">生成专业提示词</button>
+                <button id="clearBtn" type="button">清空</button>
+                <button id="copyBtn" type="button" style="display:none;">一键复制结果</button>
+            </div>
+            <div class="result-wrap">
+                <div class="result-box" id="result">生成结果会展示在这里...</div>
+                <div id="copyToast" class="copy-toast">已复制</div>
+            </div>
         </div>
     </div>
     <script>
         const submitBtn = document.getElementById('submitBtn');
         const copyBtn = document.getElementById('copyBtn');
+        const clearBtn = document.getElementById('clearBtn');
         const userInput = document.getElementById('userInput');
         const result = document.getElementById('result');
         const templateSelect = document.getElementById('templateSelect');
+        const copyToast = document.getElementById('copyToast');
         let lastResultText = "";
+        let toastTimer = null;
+        const RESULT_PLACEHOLDER = "生成结果会展示在这里...";
 
         const templates = {
             amazon: {
@@ -82,8 +130,22 @@
             userInput.placeholder = tpl.placeholder;
         }
 
+        function showCopyToast() {
+            copyToast.classList.add("show");
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => copyToast.classList.remove("show"), 1600);
+        }
+
         applyTemplatePlaceholder();
         templateSelect.onchange = applyTemplatePlaceholder;
+
+        clearBtn.onclick = () => {
+            userInput.value = "";
+            lastResultText = "";
+            result.innerText = RESULT_PLACEHOLDER;
+            copyBtn.style.display = "none";
+            copyToast.classList.remove("show");
+        };
 
         submitBtn.onclick = async () => {
             const content = userInput.value.trim();
@@ -93,7 +155,7 @@
                 return;
             }
             submitBtn.disabled = true;
-            result.innerText = "正在生成...";
+            result.innerText = "正在生成，请稍候…";
             copyBtn.style.display = "none";
             const tpl = templates[templateSelect.value] || templates.amazon;
             try{
@@ -126,13 +188,18 @@
         }
 
         copyBtn.onclick = async () => {
+            if(!lastResultText) return;
             try{
                 await navigator.clipboard.writeText(lastResultText);
-                copyBtn.innerText = "✅ 已复制";
-                setTimeout(()=> copyBtn.innerText = "一键复制结果",1500)
+                showCopyToast();
             }catch(e){
-                copyBtn.innerText = "复制失败";
-                setTimeout(()=> copyBtn.innerText = "一键复制结果",1500)
+                const temp = document.createElement("textarea");
+                temp.value = lastResultText;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand("copy");
+                document.body.removeChild(temp);
+                showCopyToast();
             }
         }
     </script>
